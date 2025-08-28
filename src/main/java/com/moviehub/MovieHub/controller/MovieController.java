@@ -45,7 +45,7 @@ public class MovieController {
             movieService.createNewMovie(m);
         }
         Map<String, Object> res = new HashMap<>();
-        res.put("message", movies.size() + "  adet film başarıyla eklendi");
+        res.put("message", movies.size() + "  tane film başarıyla eklendi");
         res.put("count", movies.size());
         res.put("status", true);
         return new ResponseEntity<>(res, HttpStatus.CREATED);
