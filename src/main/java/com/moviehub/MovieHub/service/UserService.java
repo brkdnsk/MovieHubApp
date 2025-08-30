@@ -55,6 +55,18 @@ public class UserService {
             throw new ResourceNotFoundException("Favorilerde böyle bir film yok: " + movieId);
         }
     }
+    // UserService.java
+    public User login(String email, String password) {
+        User u = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Email bulunamadı: " + email));
+
+        // ⚠️ Basit kontrol (şimdilik düz metin). İleride BCrypt’e geçeriz.
+        if (!u.getPassword().equals(password)) {
+            throw new IllegalArgumentException("Şifre hatalı");
+        }
+        return u;
+    }
+
 
     public Set<Movie> listFavorites(Long userId) {
         return findUser(userId).getFavoriteMovies();
