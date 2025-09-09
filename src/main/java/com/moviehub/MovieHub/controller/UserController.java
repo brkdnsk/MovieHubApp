@@ -6,6 +6,7 @@ import com.moviehub.MovieHub.domain.Movie;
 import com.moviehub.MovieHub.domain.User;
 import com.moviehub.MovieHub.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,6 +68,7 @@ public class UserController {
     public ResponseEntity<Set<Movie>> listFavorites(@PathVariable Long userId) {
         return ResponseEntity.ok(userService.listFavorites(userId));
     }
+
     @PostMapping("/login")
     public ResponseEntity<UserDto> login(@RequestBody LoginRequest req) {
         User u = userService.login(req.getEmail(), req.getPassword());
@@ -74,9 +76,52 @@ public class UserController {
     }
 
     // Basit API’de "logout" sunucuda bir şey yapmaz. İstemci tarafı siler.
-// Yine de endpoint istiyorsan:
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout() {
         return ResponseEntity.ok(Map.of("message", "Çıkış yapıldı (istemci tarafında token/oturum temizleyin)"));
+    }
+
+    // ---------- İZLENENLER (watched) ----------
+    /** İzlendi olarak işaretle */
+    @PostMapping("/{userId}/watched/{movieId}")
+    public ResponseEntity<Map<String, Object>> addWatched(@PathVariable Long userId,
+                                                          @PathVariable Long movieId) {
+        userService.addWatched(userId, movieId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("message", "İzlendi olarak işaretlendi", "movieId", movieId));
+    }
+
+    /** İzlenen işaretini kaldır */
+    @DeleteMapping("/{userId}/watched/{movieId}")
+    public ResponseEntity<Map<String, Object>> removeWatched(@PathVariable Long userId,
+                                                             @PathVariable Long movieId) {
+        userService.removeWatched(userId, movieId);
+        return ResponseEntity.ok(Map.of("message", "İzlendi işareti kaldırıldı", "movieId", movieId));
+    }
+
+    /** Kullanıcının izledikleri listesi */
+    @GetMapping("/{userId}/watched")
+    public ResponseEntity<Set<Movie>> listWatched(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.listWatched(userId));
+    }
+
+    /** Tek film izlenmiş mi? */
+    @GetMapping("/{userId}/watched/{movieId}")
+    public ResponseEntity<Map<String, Object>> isWatched(@PathVariable Long userId,
+                                                         @PathVariable Long movieId) {
+        boolean watched = userService.isWatched(userId, movieId);
+        return ResponseEntity.ok(Map.of("movieId", movieId, "watched", watched));
+    }
+
+    /** Toggle (buton için ideal) */
+    @PutMapping("/{userId}/watched/{movieId}/toggle")
+    public ResponseEntity<Map<String, Object>> toggleWatched(@PathVariable Long userId,
+                                                             @PathVariable Long movieId) {
+        boolean nowWatched = userService.toggleWatched(userId, movieId);
+        return ResponseEntity.ok(Map.of(
+                "movieId", movieId,
+                "watched", nowWatched,
+                "message", nowWatched ? "İzlendi olarak işaretlendi" : "İzlendi işareti kaldırıldı"
+        ));
     }
 }

@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     // Arama: isim içinde geçenler (case-insensitive)
@@ -12,4 +14,6 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     // Filtre: tür (case-insensitive)
     Page<Movie> findByGenreIgnoreCase(String genre, Pageable pageable);
+
+    Optional<Movie> findFirstByMovieNameIgnoreCase(String movieName);
 }

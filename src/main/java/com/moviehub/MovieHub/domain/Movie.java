@@ -4,6 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.Set;
+import java.util.HashSet; // zaten var ama dursun
+
+
+
 
 @Entity
 @Getter
@@ -26,7 +31,7 @@ public class Movie {
     @Size(min= 2, max= 300 , message = "Film açıklaması '${validatedValue}' {min} ve {max} aralığında olmalı!")
     @Column(nullable = false, length = 300)
     private String description;
-//4 karakter ayarı json format araştır
+    //4 karakter ayarı json format araştır
     @NotBlank(message = "Film yılı boş olamaz!")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy")
     private String releaseYear;
@@ -46,4 +51,22 @@ public class Movie {
 
     @Size(max=300, message="Poster URL'i çok uzun")
     private String posterUrl;
+
+    @Size(max=300, message="Backdrop URL'i çok uzun")
+    private String backdropUrl;
+
+    @Size(max=300, message="Trailer URL'i çok uzun")
+    private String trailerUrl;
+
+    // Gallery için JSON olarak saklanacak
+    @Column(columnDefinition = "TEXT")
+    private String gallery; // JSON string olarak saklanacak
+
+    @ManyToMany
+    @JoinTable(
+            name = "movie_cast",
+            joinColumns = @JoinColumn(name = "movie_id"),
+            inverseJoinColumns = @JoinColumn(name = "actor_id")
+    )
+    private Set<Actor> cast = new HashSet<>();
 }

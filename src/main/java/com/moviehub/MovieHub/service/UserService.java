@@ -55,20 +55,63 @@ public class UserService {
             throw new ResourceNotFoundException("Favorilerde böyle bir film yok: " + movieId);
         }
     }
-    // UserService.java
+
+    public Set<Movie> listFavorites(Long userId) {
+        return findUser(userId).getFavoriteMovies();
+    }
+
+    // Basit login (şimdilik düz metin parola)
     public User login(String email, String password) {
         User u = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Email bulunamadı: " + email));
-
-        // ⚠️ Basit kontrol (şimdilik düz metin). İleride BCrypt’e geçeriz.
         if (!u.getPassword().equals(password)) {
             throw new IllegalArgumentException("Şifre hatalı");
         }
         return u;
     }
 
+    // --------- İZLENENLER (watched) ---------
 
-    public Set<Movie> listFavorites(Long userId) {
-        return findUser(userId).getFavoriteMovies();
+    @Transactional
+    public void addWatched(Long userId, Long movieId) {
+        User u = findUser(userId);
+        Movie m = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Film bulunamadı: " + movieId));
+        u.getWatchedMovies().add(m);
+    }
+
+    @Transactional
+    public void removeWatched(Long userId, Long movieId) {
+        User u = findUser(userId);
+        boolean removed = u.getWatchedMovies().removeIf(m -> m.getId().equals(movieId));
+        if (!removed) {
+            throw new ResourceNotFoundException("İzlenenlerde böyle bir film yok: " + movieId);
+        }
+    }
+
+    public Set<Movie> listWatched(Long userId) {
+        return findUser(userId).getWatchedMovies();
+    }
+
+    public boolean isWatched(Long userId, Long movieId) {
+        return findUser(userId).getWatchedMovies()
+                .stream()
+                .anyMatch(m -> m.getId().equals(movieId));
+    }
+
+    /**
+     * Toggle: İzlenmediyse ekler, izlendiyse kaldırır.
+     * @return true => şimdi izlendi; false => işaret kaldırıldı
+     */
+    @Transactional
+    public boolean toggleWatched(Long userId, Long movieId) {
+        User u = findUser(userId);
+        Movie m = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Film bulunamadı: " + movieId));
+        boolean removed = u.getWatchedMovies().remove(m);
+        if (!removed) {
+            u.getWatchedMovies().add(m);
+        }
+        return !removed;
     }
 }

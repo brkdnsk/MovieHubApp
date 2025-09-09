@@ -1,20 +1,11 @@
-package com.moviehub.MovieHub;
+package com.moviehub;
 
-import com.moviehub.MovieHub.domain.Movie;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.moviehub")  // TÜM paketleri açıkça tara
 public class MovieHubApplication {
-
 	public static void main(String[] args) {
 		SpringApplication.run(MovieHubApplication.class, args);
-
-
-
 	}
-
-
-
-
 }

@@ -1,6 +1,8 @@
 package com.moviehub.MovieHub.controller;
 
+import com.moviehub.MovieHub.domain.Actor;
 import com.moviehub.MovieHub.domain.Movie;
+import com.moviehub.MovieHub.repository.ActorRepository;
 import com.moviehub.MovieHub.repository.MovieRepository;
 import com.moviehub.MovieHub.service.MovieService;
 import jakarta.validation.Valid;
@@ -14,9 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/movies")
@@ -27,11 +28,14 @@ public class MovieController {
     private MovieService movieService;
 
     @Autowired
-    private MovieRepository movieRepository; // ← search için gerekli
+    private MovieRepository movieRepository; // arama/sayfalama için
+
+    @Autowired
+    private ActorRepository actorRepository; // <-- cast yönetimi için
 
     @GetMapping
     public ResponseEntity<List<Movie>> ListAllMovies() {
-        List<Movie> movies = movieService.getAllMoives();
+        List<Movie> movies = movieService.getAllMoives(); // mevcut isimle bıraktım
         return ResponseEntity.ok(movies);
     }
 
@@ -42,6 +46,16 @@ public class MovieController {
         res.put("message", "Film başarıyla eklendi");
         res.put("status", "true");
         return new ResponseEntity<>(res, HttpStatus.CREATED);
+    }
+
+    // ---- ID'ye göre GÜNCELLEME ----
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Movie> updateMovie(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody Movie body
+    ) {
+        Movie updated = movieService.updateMovie(id, body);
+        return ResponseEntity.ok(updated);
     }
 
     @PostMapping("/bulk")
@@ -86,5 +100,93 @@ public class MovieController {
         }
 
         return ResponseEntity.ok(result);
+    }
+
+    // =====================================================================
+    //                          CAST (OYUNCU) YÖNETİMİ
+    // =====================================================================
+
+    /** Filmin mevcut cast'ini getir (sade isim listesi). */
+    @GetMapping("/{movieId}/cast")
+    public ResponseEntity<Map<String, Object>> getCast(@PathVariable Long movieId) {
+        Movie movie = movieService.findMovie(movieId);
+        List<String> names = movie.getCast()
+                .stream()
+                .map(Actor::getName)
+                .sorted(String::compareToIgnoreCase)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of(
+                "movieId", movieId,
+                "count", names.size(),
+                "actors", names
+        ));
+    }
+
+    /**
+     * İSİMLE oyuncu ekleme.
+     * Body: ["Leonardo DiCaprio","Joseph Gordon-Levitt"]
+     * İsim yoksa actor oluşturulur; varsa reuse edilir.
+     */
+    @PostMapping(path = "/{movieId}/cast", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> addCastByNames(@PathVariable Long movieId,
+                                                              @RequestBody List<String> actorNames) {
+        Movie movie = movieService.findMovie(movieId);
+
+        int added = 0;
+        for (String raw : actorNames == null ? Collections.<String>emptyList() : actorNames) {
+            if (raw == null) continue;
+            String name = raw.trim();
+            if (name.isBlank()) continue;
+
+            Actor actor = actorRepository.findFirstByNameIgnoreCase(name)
+                    .orElseGet(() -> actorRepository.save(new Actor(null, name)));
+
+            if (movie.getCast().add(actor)) {
+                added++;
+            }
+        }
+        movieService.createNewMovie(movie); // kaydet
+
+        return ResponseEntity.ok(Map.of(
+                "movieId", movieId,
+                "added", added,
+                "totalCast", movie.getCast().size(),
+                "message", "Oyuncular eklendi"
+        ));
+    }
+
+    /** ID ile oyuncu ekleme: /movies/{movieId}/cast/{actorId} */
+    @PostMapping("/{movieId}/cast/{actorId}")
+    public ResponseEntity<Map<String, Object>> addCastById(@PathVariable Long movieId,
+                                                           @PathVariable Long actorId) {
+        Movie movie = movieService.findMovie(movieId);
+        Actor actor = actorRepository.findById(actorId)
+                .orElseThrow(() -> new NoSuchElementException("Actor not found: " + actorId));
+
+        boolean added = movie.getCast().add(actor);
+        movieService.createNewMovie(movie);
+
+        return ResponseEntity.ok(Map.of(
+                "movieId", movieId,
+                "actorId", actorId,
+                "added", added
+        ));
+    }
+
+    /** Cast'ten aktör çıkarma: /movies/{movieId}/cast/{actorId} */
+    @DeleteMapping("/{movieId}/cast/{actorId}")
+    public ResponseEntity<Map<String, Object>> removeCast(@PathVariable Long movieId,
+                                                          @PathVariable Long actorId) {
+        Movie movie = movieService.findMovie(movieId);
+        boolean removed = movie.getCast().removeIf(a -> Objects.equals(a.getId(), actorId));
+        movieService.createNewMovie(movie);
+
+        return ResponseEntity.ok(Map.of(
+                "movieId", movieId,
+                "actorId", actorId,
+                "removed", removed
+        ));
+
     }
 }
